@@ -47,6 +47,28 @@ dev = [
     "mypy",
     "weasyprint",  # Para generar PDF
     "markdown",
+    "pre-commit",
+]
+test = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-mock",
+    "httpx",
+    "fakeredis",
+]
+all = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-mock",
+    "ruff",
+    "mypy",
+    "weasyprint",
+    "markdown",
+    "pre-commit",
+    "httpx",
+    "fakeredis",
 ]
 
 [project.entry-points."data_platform.connectors"]

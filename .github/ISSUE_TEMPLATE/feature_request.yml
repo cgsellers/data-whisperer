@@ -1,0 +1,62 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+title: "[FEATURE] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please describe your idea below.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this solve? What's the use case?
+      placeholder: "Currently, the SQL agent can only query feature_records table. I need to join with external tables..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How should this work? Be as specific as possible.
+      placeholder: "Add a `tables` config to the SQL agent that allows registering additional tables..."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches did you consider?
+      placeholder: "Could also use a separate connector type, but that adds complexity..."
+    validations:
+      required: false
+  - type: dropdown
+    id: component
+    attributes:
+      label: Related Component
+      options:
+        - API Gateway
+        - Orchestrator (LangGraph)
+        - Connectors
+        - Agents (SQL/Python/Viz/Insight)
+        - Workers
+        - Database/Schema
+        - Observability
+        - Authentication/Authorization
+        - Plugin System
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I'm willing to implement this feature
+          required: false
+        - label: I can help with testing
+          required: false
+        - label: I can help with documentation
+          required: false

@@ -1,0 +1,91 @@
+name: Bug Report
+description: Report a bug in the platform
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the sections below.
+  - type: input
+    id: version
+    attributes:
+      label: Version/Commit
+      description: What version or commit are you running?
+      placeholder: "main / abc1234"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Clear and concise description of the bug
+      placeholder: "When I call /analysis/ask with agent=sql, I get a 500 error..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step instructions to reproduce the bug
+      value: |
+        1. Start the platform with `docker compose up -d`
+        2. Run workers...
+        3. Call API...
+        4. Observe error...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should happen?
+      placeholder: "Should return SQL results..."
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happens?
+      placeholder: "Returns 500 with error..."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs/Error Messages
+      description: Paste relevant logs (use code blocks)
+      render: shell
+      placeholder: |
+        $ curl -X POST ...
+        {"detail": "Internal Server Error"}
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Component
+      options:
+        - API Gateway
+        - Orchestrator (LangGraph)
+        - Ingestor Worker
+        - ETL Worker
+        - Analysis Worker
+        - SQL Agent
+        - Python Agent
+        - Viz Agent
+        - Insight Agent
+        - Merge Worker
+        - Database/Schema
+        - Redis/Streams
+        - Docker/Infrastructure
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python version, Docker version, deployment method
+      placeholder: "Ubuntu 22.04, Python 3.11, Docker 24.0, docker-compose"
+    validations:
+      required: false
