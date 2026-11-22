@@ -1,0 +1,257 @@
+version: '3.9'
+
+services:
+  # ─────────────────────────────────────────────
+  # API Gateway (FastAPI) - Puerto 8000
+  # ─────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn data_platform.api.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./data_platform:/app/data_platform
+
+  # ─────────────────────────────────────────────
+  # Orchestrator API (LangGraph) - Puerto 8001
+  # ─────────────────────────────────────────────
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn data_platform.orchestrator.api:app --host 0.0.0.0 --port 8001 --reload
+    ports:
+      - "8001:8001"
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./data_platform:/app/data_platform
+
+  # ─────────────────────────────────────────────
+  # Workers especializados (uno por etapa)
+  # ─────────────────────────────────────────────
+  ingestor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m data_platform.workers.ingestor
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./data_platform:/app/data_platform
+    deploy:
+      replicas: 1
+
+  etl-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m data_platform.workers.etl
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./data_platform:/app/data_platform
+    deploy:
+      replicas: 1
+
+  analysis-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m data_platform.workers.analysis
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./data_platform:/app/data_platform
+    deploy:
+      replicas: 1
+
+  merge-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m data_platform.workers.merge
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./data_platform:/app/data_platform
+    deploy:
+      replicas: 1
+
+  # ─────────────────────────────────────────────
+  # Workers por Agente LLM (fan-out desde analysis)
+  # ─────────────────────────────────────────────
+  sql-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m data_platform.workers.sql_agent
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./data_platform:/app/data_platform
+    deploy:
+      replicas: 2
+
+  python-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m data_platform.workers.python_agent
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./data_platform:/app/data_platform
+    deploy:
+      replicas: 2
+
+  viz-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m data_platform.workers.viz_agent
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./data_platform:/app/data_platform
+    deploy:
+      replicas: 1
+
+  insight-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m data_platform.workers.insight_agent
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./data_platform:/app/data_platform
+    deploy:
+      replicas: 1
+
+  # ─────────────────────────────────────────────
+  # Infraestructura
+  # ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: platform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ─────────────────────────────────────────────
+  # Observabilidad - Jaeger (tracing distribuido)
+  # ─────────────────────────────────────────────
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    ports:
+      - "16686:16686"  # UI
+      - "14268:14268"  # Collector HTTP
+      - "6831:6831/udp"  # Agent UDP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=badger
+    volumes:
+      - jaegerdata:/var/lib/jaeger
+
+volumes:
+  pgdata:
+  redisdata:
+  jaegerdata:

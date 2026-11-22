@@ -1,0 +1,215 @@
+Metadata-Version: 2.4
+Name: data-platform
+Version: 0.1.0
+Summary: Plataforma Agéntica de Datos - Challenge Técnico
+Author-email: Carlos <carlos@example.com>
+License: MIT
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi
+Requires-Dist: uvicorn[standard]
+Requires-Dist: pydantic>=2.0
+Requires-Dist: pydantic-settings
+Requires-Dist: sqlalchemy[asyncio]
+Requires-Dist: asyncpg
+Requires-Dist: alembic
+Requires-Dist: redis
+Requires-Dist: langgraph
+Requires-Dist: langchain-core
+Requires-Dist: python-jose[cryptography]
+Requires-Dist: passlib[bcrypt]
+Requires-Dist: prometheus-client
+Requires-Dist: opentelemetry-api
+Requires-Dist: opentelemetry-sdk
+Requires-Dist: opentelemetry-exporter-jaeger
+Requires-Dist: opentelemetry-instrumentation-fastapi
+Requires-Dist: opentelemetry-instrumentation-sqlalchemy
+Requires-Dist: opentelemetry-instrumentation-redis
+Requires-Dist: structlog
+Requires-Dist: pandas
+Requires-Dist: numpy
+Requires-Dist: scikit-learn
+Requires-Dist: great-expectations
+Requires-Dist: plotly
+Requires-Dist: altair
+Requires-Dist: python-dotenv
+Requires-Dist: pyyaml
+Requires-Dist: croniter
+Requires-Dist: httpx
+Requires-Dist: tenacity
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-asyncio; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: pytest-mock; extra == "dev"
+Requires-Dist: testcontainers; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
+Requires-Dist: pre-commit; extra == "dev"
+Requires-Dist: schemathesis; extra == "dev"
+Requires-Dist: locust; extra == "dev"
+
+# Plataforma Agéntica de Datos
+
+**Stack:** Python 3.11, FastAPI, LangGraph, PostgreSQL 16, Redis 7, Docker Compose
+
+---
+
+## Quickstart
+
+```bash
+# 1. Configurar entorno
+cp .env.example .env
+# Editar .env con tus secrets (JWT_SECRET, API keys, etc.)
+
+# 2. Levantar todo
+docker compose up -d
+
+# 3. Verificar
+curl http://localhost:8000/health/ready
+# → {"status":"ready"}
+
+# 4. Documentación API
+open http://localhost:8000/docs
+```
+
+---
+
+## Arquitectura (4 Capas)
+
+| Capa | Componentes | Tech |
+|------|-------------|------|
+| **Ingesta** | Connector Registry, Rate Limiter, Redis Queue | Plugin system, Redis Streams |
+| **ETL** | ETL Agent (LangGraph), Feature Store | PostgreSQL + JSONB, Great Expectations |
+| **Análisis** | SQL, Python, Viz, Insight Agents | LangGraph fan-out, pandas/Plotly |
+| **Activación** | Dashboard API, Alert Engine, Reports | FastAPI, HTML artifacts |
+
+**Orquestación:** LangGraph (stateful DAG, checkpoints, retry, visualización)
+
+---
+
+## Estructura del Proyecto
+
+```
+data_platform/
+├── api/              # FastAPI Gateway + routes
+├── orchestrator/     # LangGraph pipeline + nodes
+├── agents/           # SQL, Python, Viz, Insight
+├── connectors/       # Plugins: Stripe, PG, CSV, HTTP
+├── core/             # Config, DB, Redis, Auth, Obs
+├── models/           # SQLAlchemy models
+├── schemas/          # Pydantic contracts
+└── plugins/          # Registry entry points
+```
+
+---
+
+## Endpoints Principales
+
+| Método | Path | Descripción |
+|--------|------|-------------|
+| `POST` | `/sources` | Registrar source (API, CSV, DB, Scrap) |
+| `POST` | `/sources/{id}/ingest` | Trigger ingesta manual |
+| `GET` | `/pipelines/{run_id}` | Estado + métricas del run |
+| `GET` | `/pipelines/{run_id}/results` | Resultados análisis consolidados |
+| `POST` | `/analysis/sql` | Query ad-hoc SQL Agent |
+| `POST` | `/analysis/python` | Código ad-hoc Python Agent |
+| `GET` | `/dashboards/{id}` | Dashboard HTML renderizado |
+| `GET` | `/health/ready` | Readiness probe |
+
+---
+
+## Configuración de Source (Ejemplo)
+
+```json
+POST /sources
+{
+  "source_id": "stripe_charges",
+  "type": "api",
+  "config": {
+    "base_url": "https://api.stripe.com/v1",
+    "auth": {"type": "bearer", "secret_ref": "stripe_key"},
+    "endpoint": "/charges",
+    "params": {"limit": 100, "created[gt]": "{{last_run}}"},
+    "pagination": "cursor",
+    "rate_limit": {"requests": 100, "window_seconds": 60}
+  },
+  "schedule": "0 */6 * * *"
+}
+```
+
+---
+
+## Agentes Implementados
+
+| Agente | Capacidad | Output |
+|--------|-----------|--------|
+| **SQL Agent** | Queries parametrizadas, EXPLAIN ANALYZE | Tabla + plan |
+| **Python Agent** | Pandas, scikit-learn, statsmodels | DataFrame + métricas |
+| **Viz Agent** | Plotly/Altair → HTML interactivo | Artifact HTML |
+| **Insight Agent** | Anomalías (IsolationForest), narrativas | JSON + texto |
+
+---
+
+## Observabilidad
+
+| Pilar | Implementación |
+|-------|----------------|
+| **Logs** | JSON estructurado (service, trace_id, event, metrics) |
+| **Métricas** | Prometheus (latency, throughput, errors, DLQ, tokens) |
+| **Tracing** | Jaeger (trace por pipeline_run_id, spans por agente) |
+| **Health** | `/health/live` + `/health/ready` por servicio |
+
+---
+
+## Testing
+
+```bash
+# Unit + Integration
+pytest --cov=data_platform --cov-fail-under=80
+
+# Solo unit
+pytest tests/unit -v
+
+# Load test (10k events/min)
+locust -f tests/load/locustfile.py --host=http://localhost:8000
+```
+
+---
+
+## Decisiones Clave (Para Defensa)
+
+| Decisión | Justificación |
+|----------|---------------|
+| **LangGraph** | Estado persistente, checkpoints automáticos, DAG visualizable, human-in-loop nativo |
+| **Redis Streams** | Sin deps extra, consumer groups, backpressure, replay para debugging |
+| **PostgreSQL + JSONB** | ACID, una sola BD operacional, schemas flexibles, pgvector/timescale futuros |
+| **Plugin System** | `entry_points` - nuevos conectores/agentes sin tocar core |
+| **Async Queue** | Desacopla capas, escala workers independientemente, resiliencia |
+
+---
+
+## Variables de Entorno Requeridas
+
+```bash
+# .env
+JWT_SECRET=your-secret
+JWT_PUBLIC_KEY=-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----
+DATABASE_URL=postgresql+asyncpg://user:pass@postgres:5432/platform
+REDIS_URL=redis://redis:6379/0
+STRIPE_API_KEY=sk_test_...
+GITHUB_TOKEN=ghp_...
+```
+
+---
+
+## Documentación Detallada
+
+- [ARQUITECTURA.md](./ARQUITECTURA.md) - Decisiones, flujos, contratos, observabilidad
+- [SPEC.md](./SPEC.md) - API OpenAPI, modelos DB, plugin system, orquestación, CI/CD
+
+---
+
+## Licencia
+
+MIT

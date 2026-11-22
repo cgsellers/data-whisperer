@@ -1,0 +1,5 @@
+[data_platform.agents]
+sql = data_platform.agents.sql:SQLAgent
+
+[data_platform.connectors]
+http_generic = data_platform.connectors.http:HTTPConnector

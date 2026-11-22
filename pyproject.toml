@@ -1,0 +1,81 @@
+[project]
+name = "data-platform"
+version = "1.0.0"
+description = "Plataforma Agéntica de Datos - Challenge Técnico"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Carlos", email = "carlos@example.com"}]
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic>=2.0",
+    "pydantic-settings",
+    "sqlalchemy[asyncio]",
+    "asyncpg",
+    "redis",
+    "python-jose[cryptography]",
+    "passlib[bcrypt]",
+    "prometheus-client",
+    "structlog",
+    "httpx",
+    "tenacity",
+    "python-dotenv",
+    "pyyaml",
+    # LLM & Agents
+    "langgraph>=0.2.0",
+    "langchain-core>=0.3.0",
+    "psycopg-pool>=3.0",
+    "openai>=1.30.0",
+    "anthropic>=0.25.0",
+    # Data Science (para Python Agent)
+    "pandas>=2.0",
+    "numpy>=1.26",
+    "prophet>=1.1",
+    "plotly>=5.20",
+    "scikit-learn>=1.3",
+    "scipy>=1.11",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-mock",
+    "ruff",
+    "mypy",
+    "weasyprint",  # Para generar PDF
+    "markdown",
+]
+
+[project.entry-points."data_platform.connectors"]
+http_generic = "data_platform.connectors.http:HTTPConnector"
+
+[project.entry-points."data_platform.agents"]
+sql = "data_platform.agents.sql:SQLAgent"
+python = "data_platform.agents.python:PythonAgent"
+viz = "data_platform.agents.viz:VizAgent"
+insight = "data_platform.agents.insight:InsightAgent"
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["data_platform*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "PTH", "T20", "TCH", "SIM", "RET", "ERA", "PD", "PGH", "PL"]
+ignore = ["E501", "SIM103", "T201"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

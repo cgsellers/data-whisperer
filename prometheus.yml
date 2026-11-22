@@ -1,0 +1,49 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:8000']
+    metrics_path: '/metrics'
+
+  - job_name: 'orchestrator'
+    static_configs:
+      - targets: ['orchestrator:8001']
+    metrics_path: '/metrics'
+
+  - job_name: 'workers'
+    static_configs:
+      - targets:
+          - 'ingestor:8002'
+          - 'etl-worker:8003'
+          - 'sql-agent:8004'
+          - 'python-agent:8005'
+          - 'viz-agent:8006'
+          - 'insight-agent:8007'
+    metrics_path: '/metrics'
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'jaeger'
+    static_configs:
+      - targets: ['jaeger:14269']
+
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
