@@ -13,7 +13,7 @@ services:
       - "8000:8000"
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/data_whisperer
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
@@ -35,7 +35,7 @@ services:
       - "8001:8001"
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/data_whisperer
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
@@ -55,7 +55,7 @@ services:
     command: python -m data_platform.workers.ingestor
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/data_whisperer
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
@@ -74,7 +74,7 @@ services:
     command: python -m data_platform.workers.etl
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/data_whisperer
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
@@ -93,7 +93,7 @@ services:
     command: python -m data_platform.workers.analysis
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/data_whisperer
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
@@ -112,7 +112,7 @@ services:
     command: python -m data_platform.workers.merge
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/data_whisperer
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
@@ -134,7 +134,7 @@ services:
     command: python -m data_platform.workers.sql_agent
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/data_whisperer
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
@@ -153,7 +153,7 @@ services:
     command: python -m data_platform.workers.python_agent
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/data_whisperer
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
@@ -172,7 +172,7 @@ services:
     command: python -m data_platform.workers.viz_agent
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/data_whisperer
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
@@ -191,7 +191,7 @@ services:
     command: python -m data_platform.workers.insight_agent
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/platform
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/data_whisperer
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:

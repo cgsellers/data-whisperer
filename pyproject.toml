@@ -1,7 +1,7 @@
 [project]
-name = "data-platform"
+name = "data-whisperer"
 version = "1.0.0"
-description = "Plataforma Agéntica de Datos - Challenge Técnico"
+description = "Multi-agent analytics platform: natural language → SQL, charts, code, and narratives"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}

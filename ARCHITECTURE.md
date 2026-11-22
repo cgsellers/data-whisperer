@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-This document captures the key architectural decisions for the Agentic Data Platform.
+This document captures the key architectural decisions for **data-whisperer** — a multi-agent analytics platform where natural language questions fan out to 4 specialized LLM agents (SQL, Python, Viz, Insight) via LangGraph orchestration with persistent checkpoints, semantic caching, and full observability.
 
 ## ADR-001: Event-Driven Architecture with Redis Streams
 

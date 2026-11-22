@@ -1,4 +1,4 @@
-# Contributing to Agentic Data Platform
+# Contributing to data-whisperer
 
 Thank you for your interest in contributing! This document provides guidelines for contributing to the project.
 
@@ -10,7 +10,7 @@ This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participatin
 
 ### Reporting Bugs
 
-Before creating a bug report, please check the [issue tracker](https://github.com/yourusername/agentic-data-platform/issues) to see if the issue has already been reported.
+Before creating a bug report, please check the [issue tracker](https://github.com/yourusername/data-whisperer/issues) to see if the issue has already been reported.
 
 When creating a bug report, include:
 - **Clear title** describing the issue
@@ -47,8 +47,8 @@ Enhancement suggestions are welcome! Please provide:
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/agentic-data-platform.git
-cd agentic-data-platform
+git clone https://github.com/YOUR_USERNAME/data-whisperer.git
+cd data-whisperer
 
 # Create virtual environment
 python -m venv .venv

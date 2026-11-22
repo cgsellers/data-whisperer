@@ -1,5 +1,9 @@
-# Dockerfile único para API + Worker
+# Dockerfile for data-whisperer: multi-agent analytics platform
 FROM python:3.11-slim
+
+LABEL org.opencontainers.image.title="data-whisperer"
+LABEL org.opencontainers.image.description="Multi-agent analytics platform: natural language → SQL, charts, code, narratives"
+LABEL org.opencontainers.image.source="https://github.com/yourusername/data-whisperer"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc libpq-dev curl && rm -rf /var/lib/apt/lists/*

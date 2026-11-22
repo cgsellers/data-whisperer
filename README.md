@@ -1,4 +1,4 @@
-# Agentic Data Platform
+# data-whisperer
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com)
@@ -8,7 +8,9 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://docker.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **Production-ready agentic data platform** with 4 specialized LLM agents (SQL, Python, Viz, Insight) orchestrated via LangGraph with persistent checkpoints, plugin architecture, and full observability.
+> **data-whisperer** — Ask your data anything. Get SQL, charts, code, and narratives from 4 specialized LLM agents orchestrated via LangGraph with persistent checkpoints, semantic caching, sandboxed execution, and full observability.
+
+**One question → Four agents → Complete insight**
 
 ## Architecture Overview
 
@@ -83,8 +85,8 @@
 
 ### 1. Clone & Configure
 ```bash
-git clone <your-repo-url>
-cd agentic-data-platform
+git clone https://github.com/yourusername/data-whisperer.git
+cd data-whisperer
 cp .env.example .env
 # Edit .env with your API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY)
 ```
@@ -202,7 +204,7 @@ curl -X POST http://localhost:8001/pipelines/abc-123/resume \
 ## Project Structure
 
 ```
-agentic-data-platform/
+data-whisperer/
 ├── data_platform/
 │   ├── api/                    # FastAPI application
 │   │   ├── main.py            # App factory, lifespan, middleware
@@ -300,7 +302,7 @@ Key environment variables (`.env`):
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection | `postgresql+asyncpg://postgres:postgres@localhost:5432/platform` |
+| `DATABASE_URL` | PostgreSQL connection | `postgresql+asyncpg://postgres:postgres@localhost:5432/data_whisperer` |
 | `REDIS_URL` | Redis connection | `redis://localhost:6379/0` |
 | `JWT_SECRET` | HS256 signing key | `dev-secret-change-in-production` |
 | `LLM_PROVIDER` | `mock` \| `openai` \| `anthropic` | `mock` |
