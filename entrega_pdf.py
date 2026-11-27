@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Genera PDF desde markdown usando weasyprint"""
-import markdown
-from weasyprint import HTML, CSS
 from pathlib import Path
+
+import markdown
+from weasyprint import CSS, HTML
 
 # Leer markdown
 md_path = Path("/Users/carlos/code/fcc/ENTREGA_PLATAFORMA_AGENTICA.md")
-with open(md_path, "r", encoding="utf-8") as f:
+with md_path.open(encoding="utf-8") as f:
     md_content = f.read()
 
 # Convertir a HTML

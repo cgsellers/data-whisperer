@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Final comprehensive test"""
 import asyncio
-import httpx
 import random
 import string
+
+import httpx
+
 from generate_token import generate_token
 
 TOKEN = generate_token(role="admin")

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Generador de JWT tokens para testing y demo"""
 import sys
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
+
 from jose import jwt
+
 from data_platform.core.config import settings
 
 # Scopes disponibles
@@ -40,15 +42,13 @@ def generate_token(
         "exp": int((now + timedelta(hours=expires_hours)).timestamp()),
     }
 
-    token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
-    return token
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
 def decode_token(token: str) -> dict:
     """Decodifica y valida un token"""
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-        return payload
+        return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
     except Exception as e:
         return {"error": str(e)}
 
@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     if args.curl:
         print("📋 Ejemplo curl:")
-        print(f'curl -X POST http://localhost:8000/analysis/ask \\')
+        print('curl -X POST http://localhost:8000/analysis/ask \\')
         print(f'  -H "Authorization: Bearer {token}" \\')
-        print(f'  -H "X-Client-ID: demo" \\')
-        print(f'  -d \'{{"question": "Ventas por canal última semana"}}\'')
+        print('  -H "X-Client-ID: demo" \\')
+        print('  -d \'{"question": "Ventas por canal última semana"}\'')

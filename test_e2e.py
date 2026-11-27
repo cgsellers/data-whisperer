@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """Test end-to-end: crea source, ejecuta pipeline, consulta análisis"""
 import asyncio
+import random
+import string
+import traceback
+
 import httpx
+
 from generate_token import generate_token
 
 BASE_URL = "http://localhost:8000"
@@ -24,9 +29,6 @@ async def test_health():
 
 async def create_source():
     """Crea un source HTTP de prueba"""
-    import time
-    import random
-    import string
     # Generate unique source_id with only lowercase letters
     suffix = ''.join(random.choices(string.ascii_lowercase, k=6))
     source_id = f"testapi{suffix}"
@@ -93,7 +95,7 @@ async def main():
         await asyncio.sleep(2)
 
         run = await trigger_ingest(source_id)
-        run_id = run.get("run_id")
+        run.get("run_id")
 
         # Esperar un poco
         await asyncio.sleep(5)
@@ -115,7 +117,6 @@ async def main():
         print("❌ No se puede conectar a la API. ¿Está corriendo en localhost:8000?")
     except Exception as e:
         print(f"❌ Error: {e}")
-        import traceback
         traceback.print_exc()
 
 
