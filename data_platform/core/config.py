@@ -2,7 +2,7 @@
 from functools import lru_cache
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     # Auth
     JWT_SECRET: str = Field(default="dev-secret-change-in-prod-min-32-chars")
-    JWT_ALGORITHM: str = "HS256"  # Simplificado para demo
+    JWT_ALGORITHM: str = "HS256"
 
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@postgres:5432/platform"
@@ -49,9 +49,7 @@ class Settings(BaseSettings):
     # LangGraph
     LANGGRAPH_CHECKPOINT_POOL_SIZE: int = Field(default=5)
 
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
 @lru_cache
