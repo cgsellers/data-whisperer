@@ -1,8 +1,7 @@
 """Estado del pipeline para LangGraph - TypedDict para checkpoints persistentes"""
-from typing import TypedDict, Literal, Optional, Any
-from uuid import UUID
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any, Literal, TypedDict
 
 
 class PipelineState(TypedDict, total=False):
@@ -22,28 +21,28 @@ class PipelineState(TypedDict, total=False):
     feature_records: list[dict[str, Any]]
 
     # Resultados de agentes (Analysis Layer)
-    sql_result: Optional[dict[str, Any]]
-    python_result: Optional[dict[str, Any]]
-    viz_result: Optional[dict[str, Any]]
-    insight_result: Optional[dict[str, Any]]
+    sql_result: dict[str, Any] | None
+    python_result: dict[str, Any] | None
+    viz_result: dict[str, Any] | None
+    insight_result: dict[str, Any] | None
 
     # Estado de ejecución
     current_stage: Literal["ingest", "etl", "analysis", "merge", "completed", "failed"]
     status: Literal["pending", "running", "completed", "partial", "failed"]
-    error: Optional[str]
+    error: str | None
     errors: list[str]
 
     # Métricas y metadata
     stages_completed: list[str]
     stages_failed: list[str]
     started_at: str
-    completed_at: Optional[str]
+    completed_at: str | None
     tokens_used: int
     total_cost_usd: float
 
     # Para retry/resume
     retry_count: int
-    last_checkpoint: Optional[str]
+    last_checkpoint: str | None
 
 
 @dataclass
@@ -56,7 +55,7 @@ class AgentResult:
     tokens_used: int = 0
     cost_usd: float = 0.0
     confidence: float = 0.0
-    error: Optional[str] = None
+    error: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

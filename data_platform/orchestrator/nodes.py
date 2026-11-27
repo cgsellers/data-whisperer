@@ -1,29 +1,33 @@
 """Nodos del grafo LangGraph - Cada nodo es una etapa del pipeline"""
 import asyncio
-import time
 import hashlib
 import json
+import time
 import uuid
-from typing import Any
-from sqlalchemy import select, text
-from data_platform.core.config import settings
-from data_platform.core.database import async_session_maker
-from data_platform.core.redis import get_redis
+
+from sqlalchemy import select
+
+from data_platform.agents.base import AgentInput, get_agent
 from data_platform.connectors.base import get_connector
-from data_platform.agents.base import get_agent, AgentInput
-from data_platform.models import (
-    PipelineRun, IngestionEvent, FeatureRecord, AnalysisResult
-)
-from data_platform.orchestrator.state import (
-    PipelineState, create_initial_state, update_state, AgentResult
-)
+from data_platform.core.database import async_session_maker
 from data_platform.core.observability import (
-    get_logger, INGESTION_EVENTS, ETL_DURATION, AGENT_DURATION, PIPELINE_DURATION,
-    LLM_TOKENS_TOTAL
+    AGENT_DURATION,
+    ETL_DURATION,
+    INGESTION_EVENTS,
+    PIPELINE_DURATION,
+    get_logger,
 )
-from data_platform.core.llm import llm_complete_with_cache
+from data_platform.models import AnalysisResult, FeatureRecord, IngestionEvent, PipelineRun
+from data_platform.orchestrator.state import (
+    AgentResult,
+    PipelineState,
+    update_state,
+)
 
 logger = get_logger(__name__)
+
+# Constants
+SAMPLE_LIMIT = 10
 
 
 # ─────────────────────────────────────────────────────────────
@@ -46,7 +50,6 @@ async def ingest_node(state: PipelineState) -> PipelineState:
             events.append(record)
 
         # Guardar en BD
-        ingestion_ids = []
         async with async_session_maker() as db:
             for event in events:
                 payload_hash = hashlib.sha256(
@@ -72,7 +75,7 @@ async def ingest_node(state: PipelineState) -> PipelineState:
                     IngestionEvent.pipeline_run_id == state["run_id"]
                 )
             )
-            ingestion_ids = [row[0] for row in result.fetchall()]
+            _ = [row[0] for row in result.fetchall()]
 
         INGESTION_EVENTS.labels(
             source_id=state["source_id"], status="success"
@@ -242,12 +245,11 @@ async def analysis_node(state: PipelineState) -> PipelineState:
     )
 
 
-from data_platform.agents.base import AgentInput
 
 def _build_agent_context(features: list[dict], state: PipelineState) -> AgentInput:
     """Construye contexto compartido para todos los agentes"""
     # Extraer sample de features para schema context
-    sample_features = features[:10] if len(features) > 10 else features
+    sample_features = features[:SAMPLE_LIMIT] if len(features) > SAMPLE_LIMIT else features
 
     # Inferir columnas del primer feature
     columns = []

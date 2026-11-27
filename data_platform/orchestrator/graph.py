@@ -1,30 +1,25 @@
 """Grafo LangGraph con checkpoints persistentes en PostgreSQL (con fallback a memoria)"""
-import asyncio
-from typing import Any
-from uuid import uuid4
 
-from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, StateGraph
 
 # Try to import PostgresSaver, fallback to MemorySaver
 try:
     from langgraph.checkpoint.postgres import PostgresSaver
     from psycopg_pool import AsyncConnectionPool
     POSTGRES_SAVER_AVAILABLE = True
-except ImportError as e:
+except ImportError:
     POSTGRES_SAVER_AVAILABLE = False
     PostgresSaver = None
     AsyncConnectionPool = None
 
+
 from data_platform.core.config import settings
-from data_platform.orchestrator.state import PipelineState, create_initial_state
-from data_platform.orchestrator.nodes import (
-    ingest_node, etl_node, analysis_node, merge_node
-)
-from data_platform.core.observability import get_logger
 from data_platform.core.database import async_session_maker
+from data_platform.core.observability import get_logger
 from data_platform.models import PipelineRun
-from sqlalchemy import select
+from data_platform.orchestrator.nodes import analysis_node, etl_node, ingest_node, merge_node
+from data_platform.orchestrator.state import PipelineState, create_initial_state
 
 logger = get_logger(__name__)
 
@@ -36,7 +31,7 @@ _use_postgres = POSTGRES_SAVER_AVAILABLE
 
 
 async def get_checkpoint_pool():
-    global _checkpoint_pool
+    global _checkpoint_pool  # noqa: PLW0603
     if _checkpoint_pool is None and _use_postgres:
         database_url = settings.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
         _checkpoint_pool = AsyncConnectionPool(
@@ -51,7 +46,7 @@ async def get_checkpoint_pool():
 
 
 async def get_checkpointer():
-    global _checkpointer, _use_postgres
+    global _checkpointer, _use_postgres  # noqa: PLW0603
     if _checkpointer is None:
         if _use_postgres:
             try:
@@ -92,7 +87,7 @@ def build_graph() -> StateGraph:
 
 async def get_compiled_graph():
     """Obtiene grafo compilado con checkpointer (singleton)"""
-    global _compiled_graph
+    global _compiled_graph  # noqa: PLW0603
     if _compiled_graph is None:
         checkpointer = await get_checkpointer()
         graph = build_graph()
@@ -190,8 +185,7 @@ async def resume_pipeline(run_id: str) -> PipelineState:
         run_id=run_id, stage=state.values.get("current_stage"))
 
     # Continuar desde donde quedó
-    final_state = await graph.ainvoke(None, config=config)
-    return final_state
+    return await graph.ainvoke(None, config=config)
 
 
 async def get_pipeline_state(run_id: str) -> PipelineState | None:
@@ -204,7 +198,7 @@ async def get_pipeline_state(run_id: str) -> PipelineState | None:
 
 async def close_checkpointer():
     """Cierra conexiones de checkpointer (para shutdown)"""
-    global _checkpoint_pool, _checkpointer, _compiled_graph
+    global _checkpoint_pool, _checkpointer, _compiled_graph  # noqa: PLW0603
     if _checkpoint_pool:
         await _checkpoint_pool.close()
         _checkpoint_pool = None
