@@ -1,8 +1,9 @@
 """Base para conectores (Plugin System)"""
-from abc import ABC, abstractmethod
-from typing import AsyncIterator
 import hashlib
 import json
+from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
+from importlib.metadata import entry_points
 
 
 class BaseConnector(ABC):
@@ -50,7 +51,6 @@ def list_connectors() -> list[str]:
 async def load_connectors():
     """Cargar conectores desde entry_points + fallback manual"""
     try:
-        from importlib.metadata import entry_points
         for ep in entry_points(group="data_platform.connectors"):
             connector_class = ep.load()
             register_connector(connector_class())
@@ -60,7 +60,8 @@ async def load_connectors():
     # Fallback: registrar conectores manualmente si no se cargaron por entry_points
     if not _connectors:
         try:
-            from data_platform.connectors.http import HTTPConnector
+            from data_platform.connectors.http import HTTPConnector  # noqa: PLC0415
             register_connector(HTTPConnector())
         except Exception:
             pass
+

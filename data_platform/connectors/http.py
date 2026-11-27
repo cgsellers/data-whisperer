@@ -1,6 +1,8 @@
 """Conector HTTP genérico (ejemplo funcional)"""
+from collections.abc import AsyncIterator
+
 import httpx
-from typing import AsyncIterator
+
 from .base import BaseConnector, register_connector
 
 
