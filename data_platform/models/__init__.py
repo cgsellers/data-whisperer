@@ -1,10 +1,20 @@
 """Modelos SQLAlchemy"""
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, BYTEA
-from sqlalchemy import (
-    Column, String, DateTime, Text, Boolean, ForeignKey, Index, func, Integer, Numeric, LargeBinary
-)
 import uuid
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    func,
+)
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy.orm import DeclarativeBase
 
 
 class Base(DeclarativeBase):
