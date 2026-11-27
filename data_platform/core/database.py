@@ -1,7 +1,11 @@
 """Conexión a PostgreSQL async con SQLAlchemy"""
 import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
+
+from data_platform.models import Base
+
 from .config import settings
 from .observability import get_logger
 
@@ -25,7 +29,6 @@ async def get_db() -> AsyncSession:
 
 async def init_db(max_retries: int = 10, retry_delay: float = 2.0):
     """Crear tablas si no existen (para demo, en prod usar Alembic)"""
-    from data_platform.models import Base
 
     for attempt in range(max_retries):
         try:
@@ -40,3 +43,4 @@ async def init_db(max_retries: int = 10, retry_delay: float = 2.0):
             else:
                 logger.error("database_init_failed", error=str(e))
                 raise
+

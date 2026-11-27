@@ -1,12 +1,16 @@
 """Cliente Redis para colas y rate limiting"""
+import time
+from contextlib import suppress
+
 import redis.asyncio as redis
+
 from .config import settings
 
 redis_client: redis.Redis | None = None
 
 
-async def get_redis() -> redis.Redis:
-    global redis_client
+async def get_redis() -> redis.Redis:  # noqa: PLW0603
+    global redis_client  # noqa: PLW0603
     if redis_client is None:
         redis_client = redis.from_url(
             settings.REDIS_URL,
@@ -19,8 +23,8 @@ async def get_redis() -> redis.Redis:
     return redis_client
 
 
-async def close_redis():
-    global redis_client
+async def close_redis():  # noqa: PLW0603
+    global redis_client  # noqa: PLW0603
     if redis_client:
         await redis_client.close()
         redis_client = None
@@ -51,7 +55,6 @@ end
 async def check_rate_limit(identifier: str, limit: int = 100, window_seconds: int = 60) -> tuple[bool, int]:
     """Retorna (allowed, remaining)"""
     r = await get_redis()
-    import time
     now_ms = int(time.time() * 1000)
     result = await r.eval(RATE_LIMIT_SCRIPT, 1, f"ratelimit:{identifier}", limit, window_seconds, now_ms)
     return bool(result[0]), int(result[1])
@@ -72,10 +75,8 @@ async def stream_read(stream: str, count: int = 10, block: int = 5000) -> list:
 
 async def stream_consume_group(stream: str, group: str, consumer: str, count: int = 10) -> list:
     r = await get_redis()
-    try:
+    with suppress(redis.ResponseError):
         await r.xgroup_create(stream, group, id="0", mkstream=True)
-    except redis.ResponseError:
-        pass  # Group ya existe
     return await r.xreadgroup(group, consumer, {stream: ">"}, count=count, block=5000)
 
 

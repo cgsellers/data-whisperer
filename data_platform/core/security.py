@@ -1,28 +1,29 @@
 """Auth JWT simple + rate limit middleware"""
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
+
 from .config import settings
-from .redis import check_rate_limit
 from .observability import get_logger
+from .redis import check_rate_limit
 
 logger = get_logger(__name__)
 security = HTTPBearer(auto_error=False)
+_security_dep = Depends(security)
 
 
-async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+async def verify_token(credentials: HTTPAuthorizationCredentials = _security_dep) -> dict:
     if not credentials:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token")
     try:
-        payload = jwt.decode(
+        return jwt.decode(
             credentials.credentials,
             settings.JWT_SECRET,
             algorithms=[settings.JWT_ALGORITHM]
         )
-        return payload
     except JWTError as e:
         logger.warning("invalid_token", error=str(e))
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from None
 
 
 async def rate_limit_middleware(request: Request, call_next):
@@ -45,9 +46,10 @@ async def rate_limit_middleware(request: Request, call_next):
 
 
 def require_scope(required_scope: str):
-    def checker(payload: dict = Depends(verify_token)):
+    def checker(payload: dict = _security_dep):  # type: ignore[assignment]
         scopes = payload.get("scopes", [])
         if required_scope not in scopes and "admin" not in scopes:
             raise HTTPException(status_code=403, detail=f"Scope '{required_scope}' required")
         return payload
     return checker
+

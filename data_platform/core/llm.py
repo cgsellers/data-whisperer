@@ -1,10 +1,10 @@
 """Cliente LLM unificado: OpenAI, Anthropic, Mock (para demo sin API keys)"""
-import os
-import json
 import hashlib
+import json
 from abc import ABC, abstractmethod
-from typing import Any, Optional
 from dataclasses import dataclass
+from typing import Any
+
 from data_platform.core.config import settings
 from data_platform.core.observability import get_logger
 
@@ -22,7 +22,7 @@ class LLMResponse:
 
 class BaseLLMClient(ABC):
     @abstractmethod
-    async def complete(
+    async def complete(  # noqa: PLR0913, PLR0917
         self,
         messages: list[dict],
         tools: list[dict] | None = None,
@@ -44,7 +44,7 @@ class MockLLMClient(BaseLLMClient):
     def __init__(self):
         self.call_count = 0
 
-    async def complete(
+    async def complete(  # noqa: PLR0913, PLR0917
         self,
         messages: list[dict],
         tools: list[dict] | None = None,
@@ -75,7 +75,7 @@ class MockLLMClient(BaseLLMClient):
                 model="mock-gpt-4o-mini"
             )
 
-        elif "python" in last_msg or "code-gen" in last_msg or "forecast" in last_msg:
+        if "python" in last_msg or "code-gen" in last_msg or "forecast" in last_msg:
             return LLMResponse(
                 content="",
                 tool_calls=[{
@@ -92,7 +92,7 @@ class MockLLMClient(BaseLLMClient):
                 model="mock-gpt-4o-mini"
             )
 
-        elif "viz" in last_msg or "plotly" in last_msg or "visualiz" in last_msg:
+        if "viz" in last_msg or "plotly" in last_msg or "visualiz" in last_msg:
             return LLMResponse(
                 content="",
                 tool_calls=[{
@@ -121,7 +121,7 @@ class MockLLMClient(BaseLLMClient):
                 model="mock-gpt-4o-mini"
             )
 
-        elif "insight" in last_msg or "anomal" in last_msg or "narrativa" in last_msg:
+        if "insight" in last_msg or "anomal" in last_msg or "narrativa" in last_msg:
             return LLMResponse(
                 content="",
                 tool_calls=[{
@@ -169,7 +169,7 @@ class MockLLMClient(BaseLLMClient):
 class OpenAILLMClient(BaseLLMClient):
     def __init__(self):
         try:
-            from openai import AsyncOpenAI
+            from openai import AsyncOpenAI  # noqa: PLC0415
             self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
             self.available = True
         except Exception as e:
@@ -177,7 +177,9 @@ class OpenAILLMClient(BaseLLMClient):
             self.client = None
             self.available = False
 
-    async def complete(self, messages, tools=None, tool_choice=None, temperature=0.1, max_tokens=None, response_format=None):
+    async def complete(  # noqa: PLR0913, PLR0917
+        self, messages, tools=None, tool_choice=None, temperature=0.1, max_tokens=None, response_format=None
+    ):
         if not self.available:
             raise RuntimeError("OpenAI client not available")
         resp = await self.client.chat.completions.create(
@@ -211,7 +213,7 @@ class OpenAILLMClient(BaseLLMClient):
 class AnthropicLLMClient(BaseLLMClient):
     def __init__(self):
         try:
-            from anthropic import AsyncAnthropic
+            from anthropic import AsyncAnthropic  # noqa: PLC0415
             self.client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
             self.available = True
         except Exception as e:
@@ -219,7 +221,9 @@ class AnthropicLLMClient(BaseLLMClient):
             self.client = None
             self.available = False
 
-    async def complete(self, messages, tools=None, tool_choice=None, temperature=0.1, max_tokens=None, response_format=None):
+    async def complete(  # noqa: PLR0913, PLR0917
+        self, messages, tools=None, tool_choice=None, temperature=0.1, max_tokens=None, response_format=None
+    ):
         if not self.available:
             raise RuntimeError("Anthropic client not available")
         # Convertir formato OpenAI -> Anthropic
@@ -263,14 +267,14 @@ class LLMCache:
 
     async def get_redis(self):
         if self.redis is None:
-            from data_platform.core.redis import get_redis
+            from data_platform.core.redis import get_redis  # noqa: PLC0415
             self.redis = await get_redis()
         return self.redis
 
     def _cache_key(self, prompt_hash: str, model: str) -> str:
         return f"llm:cache:{model}:{prompt_hash}"
 
-    async def get(self, messages: list[dict], model: str) -> Optional[LLMResponse]:
+    async def get(self, messages: list[dict], model: str) -> LLMResponse | None:
         if not self.enabled:
             return None
         try:
@@ -312,8 +316,8 @@ _llm_client: BaseLLMClient | None = None
 _llm_cache = LLMCache()
 
 
-def get_llm_client() -> BaseLLMClient:
-    global _llm_client
+def get_llm_client() -> BaseLLMClient:  # noqa: PLW0603
+    global _llm_client  # noqa: PLW0603
     if _llm_client is None:
         provider = getattr(settings, "LLM_PROVIDER", "mock").lower()
         if provider == "openai":
@@ -336,32 +340,44 @@ def get_llm_cache() -> LLMCache:
     return _llm_cache
 
 
-async def llm_complete_with_cache(
-    messages: list[dict],
-    tools: list[dict] | None = None,
-    tool_choice: str | None = None,
-    temperature: float = 0.1,
-    max_tokens: int | None = None,
-    response_format: dict | None = None,
-    use_cache: bool = True,
-) -> LLMResponse:
+@dataclass
+class LLMCompleteParams:
+    messages: list[dict]
+    tools: list[dict] | None = None
+    tool_choice: str | None = None
+    temperature: float = 0.1
+    max_tokens: int | None = None
+    response_format: dict | None = None
+    use_cache: bool = True
+
+
+async def llm_complete_with_cache(params: LLMCompleteParams) -> LLMResponse:
     client = get_llm_client()
     cache = get_llm_cache()
     model = getattr(settings, "LLM_DEFAULT_MODEL", "mock")
 
-    if use_cache:
-        cached = await cache.get(messages, model)
+    if params.use_cache:
+        cached = await cache.get(params.messages, model)
         if cached:
             return cached
 
-    response = await client.complete(messages, tools, tool_choice, temperature, max_tokens, response_format)
+    response = await client.complete(
+        params.messages,
+        params.tools,
+        params.tool_choice,
+        params.temperature,
+        params.max_tokens,
+        params.response_format,
+    )
 
-    if use_cache:
-        await cache.set(messages, model, response)
+    if params.use_cache:
+        await cache.set(params.messages, model, response)
 
     # Métricas
-    from data_platform.core.observability import LLM_TOKENS_TOTAL, LLM_LATENCY_SECONDS
+    from data_platform.core.observability import LLM_TOKENS_TOTAL  # noqa: PLC0415
     if response.usage:
         LLM_TOKENS_TOTAL.labels(model=model, type="prompt").inc(response.usage.get("prompt_tokens", 0))
         LLM_TOKENS_TOTAL.labels(model=model, type="completion").inc(response.usage.get("completion_tokens", 0))
     return response
+
+

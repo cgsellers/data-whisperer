@@ -1,10 +1,12 @@
 """Logging estructurado, métricas Prometheus y OpenTelemetry tracing"""
+import logging
 import os
 import sys
-import logging
+
 import structlog
-from prometheus_client import Counter, Histogram, Gauge, generate_latest
 from fastapi import Response
+from prometheus_client import Counter, Histogram, generate_latest
+
 from .config import settings
 
 # ─────────────────────────────────────────────
@@ -47,22 +49,22 @@ def get_logger(name: str) -> structlog.BoundLogger:
 # ─────────────────────────────────────────────
 _otel_initialized = False
 
-def init_telemetry():
+def init_telemetry():  # noqa: PLW0603
     """Inicializa OpenTelemetry con Jaeger exporter"""
-    global _otel_initialized
+    global _otel_initialized  # noqa: PLW0603
     if _otel_initialized:
         return
 
     try:
-        from opentelemetry import trace
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import BatchSpanProcessor
-        from opentelemetry.exporter.jaeger.thrift import JaegerExporter
-        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-        from opentelemetry.instrumentation.redis import RedisInstrumentor
-        from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-        from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-        from opentelemetry.sdk.resources import Resource, SERVICE_NAME
+        from opentelemetry import trace  # noqa: PLC0415
+        from opentelemetry.exporter.jaeger.thrift import JaegerExporter  # noqa: PLC0415
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor  # noqa: PLC0415
+        from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor  # noqa: PLC0415
+        from opentelemetry.instrumentation.redis import RedisInstrumentor  # noqa: PLC0415
+        from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor  # noqa: PLC0415
+        from opentelemetry.sdk.resources import SERVICE_NAME, Resource  # noqa: PLC0415
+        from opentelemetry.sdk.trace import TracerProvider  # noqa: PLC0415
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor  # noqa: PLC0415
 
         resource = Resource.create({SERVICE_NAME: "data-platform"})
         provider = TracerProvider(resource=resource)
@@ -91,7 +93,7 @@ def init_telemetry():
 
 def get_tracer(name: str):
     """Obtiene tracer para spans manuales"""
-    from opentelemetry import trace
+    from opentelemetry import trace  # noqa: PLC0415
     return trace.get_tracer(name)
 
 
@@ -161,3 +163,4 @@ LLM_BUDGET_EXCEEDED = Counter(
 
 async def metrics_endpoint() -> Response:
     return Response(content=generate_latest(), media_type="text/plain")
+

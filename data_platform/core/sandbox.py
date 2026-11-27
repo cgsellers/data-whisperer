@@ -1,13 +1,13 @@
 """Sandbox Python seguro para ejecutar código generado por LLM"""
 import asyncio
 import json
-import tempfile
-import os
-import signal
 import resource
 import sys
-from typing import Any
+import tempfile
+from contextlib import suppress
 from dataclasses import dataclass
+from pathlib import Path
+
 from data_platform.core.observability import get_logger
 
 logger = get_logger(__name__)
@@ -83,31 +83,21 @@ class PythonSandbox:
 
     def _limit_resources(self):
         """Configura límites de recursos en el proceso hijo (best effort)"""
-        try:
+        with suppress(Exception):
             # CPU time limit
             resource.setrlimit(resource.RLIMIT_CPU, (self.cpu_limit, self.cpu_limit))
-        except Exception:
-            pass
-        try:
+        with suppress(Exception):
             # Memory limit
             resource.setrlimit(resource.RLIMIT_AS, (self.memory_limit, self.memory_limit))
-        except Exception:
-            pass
-        try:
+        with suppress(Exception):
             # File size limit
             resource.setrlimit(resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024))
-        except Exception:
-            pass
-        try:
+        with suppress(Exception):
             # No core dumps
             resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-        except Exception:
-            pass
-        try:
+        with suppress(Exception):
             # Max processes (may not work on macOS)
             resource.setrlimit(resource.RLIMIT_NPROC, (1, 1))
-        except Exception:
-            pass
 
     async def execute(self, code: str, input_data: dict | None = None) -> SandboxResult:
         """
@@ -158,7 +148,7 @@ class PythonSandbox:
                     timeout=self.timeout
                 )
                 timed_out = False
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 proc.kill()
                 await proc.wait()
                 return SandboxResult(
@@ -179,10 +169,8 @@ class PythonSandbox:
 
         finally:
             # Cleanup
-            try:
-                os.unlink(temp_path)
-            except Exception:
-                pass
+            with suppress(Exception):
+                Path(temp_path).unlink()
 
     def _build_wrapper(self, code: str, input_data: dict | None) -> str:
         """Construye código wrapper que captura resultado"""
@@ -215,8 +203,8 @@ elif "df" in locals():
 _default_sandbox: PythonSandbox | None = None
 
 
-def get_sandbox() -> PythonSandbox:
-    global _default_sandbox
+def get_sandbox() -> PythonSandbox:  # noqa: PLW0603
+    global _default_sandbox  # noqa: PLW0603
     if _default_sandbox is None:
         _default_sandbox = PythonSandbox()
     return _default_sandbox
@@ -226,3 +214,5 @@ async def execute_python(code: str, features: list[dict] | None = None) -> Sandb
     """Helper para ejecutar código en sandbox por defecto"""
     sandbox = get_sandbox()
     return await sandbox.execute(code, {"features": features} if features else None)
+
+
