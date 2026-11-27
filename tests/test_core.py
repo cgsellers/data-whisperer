@@ -1,30 +1,44 @@
 """Tests básicos de la plataforma - sin necesidad de BD/Redis reales"""
-import pytest
-from uuid import uuid4
 from datetime import datetime
+from uuid import uuid4
+
+import pytest
+
+# Test agents
+from data_platform.agents.base import (
+    AgentInput,
+    AgentOutput,
+    BaseLLMAgent,
+    _agents,
+    get_agent,
+    list_agents,
+    register_agent,
+)
+from data_platform.agents.sql import SQLAgent
+
+# Test connectors
+from data_platform.connectors.base import BaseConnector, list_connectors
+from data_platform.connectors.http import HTTPConnector
+from data_platform.core.observability import (
+    AGENT_DURATION,
+    ETL_DURATION,
+    INGESTION_EVENTS,
+    INGESTION_LATENCY,
+    PIPELINE_DURATION,
+    get_logger,
+)
+from data_platform.core.security import require_scope
+
+# Test models
+from data_platform.models import AnalysisResult, FeatureRecord, IngestionEvent, PipelineRun, Source
 
 # Test schemas
 from data_platform.schemas import (
-    SourceCreate, SourceRead,
-    PipelineRunRead, TriggerIngest,
-    FeatureRead, AnalysisRequest,
-    AnalysisResponse, HealthResponse
+    HealthResponse,
+    PipelineRunRead,
+    SourceCreate,
+    TriggerIngest,
 )
-
-# Test models
-from data_platform.models import (
-    Source, PipelineRun, IngestionEvent, FeatureRecord, AnalysisResult
-)
-
-# Test connectors
-from data_platform.connectors.base import BaseConnector
-from data_platform.connectors import http as http_connector_module  # triggers auto-register
-from data_platform.connectors.http import HTTPConnector
-
-# Test agents
-from data_platform.agents.base import BaseAgent, AgentInput, AgentOutput, register_agent, get_agent, list_agents
-from data_platform.agents import sql as sql_agent_module  # triggers auto-register
-from data_platform.agents.sql import SQLAgent
 
 
 class TestSchemas:
@@ -48,7 +62,7 @@ class TestSchemas:
             assert s.type == t
 
         # Invalid type should fail
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SourceCreate(source_id="t", type="invalid", config={})
 
     def test_pipeline_run_read(self):
@@ -71,7 +85,7 @@ class TestSchemas:
     def test_health_response(self):
         health = HealthResponse(status="ready", service="api-gateway")
         assert health.status == "ready"
-        assert health.version == "0.1.0"
+        assert health.version == "1.0.0"
 
 
 class TestModels:
@@ -142,7 +156,6 @@ class TestConnectors:
         assert valid is False
 
     def test_connector_registry(self):
-        from data_platform.connectors.base import list_connectors
         # HTTPConnector se registra al importar el módulo (ver import arriba)
         connectors = list_connectors()
         assert "http_generic" in connectors
@@ -153,12 +166,14 @@ class TestAgents:
 
     def test_agent_input_output(self):
         inp = AgentInput(
-            entity_ids=["e1", "e2"],
+            question="Test question",
+            context={"key": "value"},
             features=[{"col": "val"}],
             params={"query": "SELECT 1"},
             pipeline_run_id=uuid4()
         )
-        assert inp.entity_ids == ["e1", "e2"]
+        assert inp.question == "Test question"
+        assert inp.features == [{"col": "val"}]
 
         out = AgentOutput(
             status="success",
@@ -175,11 +190,13 @@ class TestAgents:
 
     def test_agent_registry(self):
         # Limpiar registry para test aislado
-        from data_platform.agents.base import _agents
         _agents.clear()
 
-        class DummyAgent(BaseAgent):
+        class DummyAgent(BaseLLMAgent):
             name = "dummy"
+            async def _execute_tool_calls(self, tool_calls, input):
+                return {"result": "ok"}
+
             async def run(self, input):
                 return AgentOutput(status="success", result={}, execution_time_ms=0)
 
@@ -188,7 +205,6 @@ class TestAgents:
         assert "dummy" in list_agents()
 
         # Restaurar SQLAgent para siguientes tests
-        from data_platform.agents.sql import SQLAgent
         register_agent(SQLAgent())
 
 
@@ -196,15 +212,10 @@ class TestObservability:
     """Tests de observabilidad básica"""
 
     def test_structlog_config(self):
-        from data_platform.core.observability import get_logger
         logger = get_logger("test")
         assert logger is not None
 
     def test_prometheus_metrics_exist(self):
-        from data_platform.core.observability import (
-            INGESTION_EVENTS, INGESTION_LATENCY,
-            ETL_DURATION, AGENT_DURATION, PIPELINE_DURATION
-        )
         assert INGESTION_EVENTS is not None
         assert INGESTION_LATENCY is not None
         assert ETL_DURATION is not None
@@ -216,7 +227,6 @@ class TestSecurity:
     """Tests de seguridad básica"""
 
     def test_require_scope_factory(self):
-        from data_platform.core.security import require_scope
         checker = require_scope("ingest:write")
         assert callable(checker)
 
