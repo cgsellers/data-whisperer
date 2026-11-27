@@ -1,25 +1,32 @@
 """API Routes para análisis conversacional - /analysis/ask"""
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from pydantic import BaseModel, Field
-from typing import Optional, Literal
+from dataclasses import dataclass
+from typing import Literal
 from uuid import uuid4
-from data_platform.core.security import require_scope
-from data_platform.core.observability import get_logger
-from data_platform.orchestrator.graph import run_pipeline_graph, get_pipeline_state, resume_pipeline
-from data_platform.core.config import settings
-from data_platform.core.database import async_session_maker
-from data_platform.models import Source
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy import select
+
+from data_platform.agents.base import AgentInput, get_agent, load_agents
+from data_platform.core.database import async_session_maker
+from data_platform.core.observability import get_logger
+from data_platform.core.security import require_scope
+from data_platform.models import Source
+from data_platform.orchestrator.graph import get_pipeline_state, resume_pipeline, run_pipeline_graph
+from data_platform.orchestrator.state import create_initial_state, update_state
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
+_require_analysis_read = Depends(require_scope("analysis:read"))
+_require_analysis_write = Depends(require_scope("analysis:write"))
+
 
 class AskRequest(BaseModel):
     question: str = Field(..., description="Pregunta en lenguaje natural")
-    source_id: Optional[str] = Field(None, description="Source específico (opcional)")
-    run_id: Optional[str] = Field(None, description="Reusar pipeline run existente")
-    agent: Optional[Literal["sql", "python", "viz", "insight", "auto"]] = Field(
+    source_id: str | None = Field(None, description="Source específico (opcional)")
+    run_id: str | None = Field(None, description="Reusar pipeline run existente")
+    agent: Literal["sql", "python", "viz", "insight", "auto"] | None = Field(
         "auto", description="Agente específico a ejecutar (auto = todos en paralelo)"
     )
 
@@ -27,20 +34,30 @@ class AskRequest(BaseModel):
 class AskResponse(BaseModel):
     run_id: str
     status: str
-    answer: Optional[str] = None
-    sql_result: Optional[dict] = None
-    python_result: Optional[dict] = None
-    viz_result: Optional[dict] = None
-    insight_result: Optional[dict] = None
+    answer: str | None = None
+    sql_result: dict | None = None
+    python_result: dict | None = None
+    viz_result: dict | None = None
+    insight_result: dict | None = None
     tokens_used: int = 0
-    agent: Optional[str] = None
+    agent: str | None = None
+
+
+@dataclass
+class SingleAgentGraphParams:
+    run_id: str
+    source_id: str
+    source_config: dict
+    trace_id: str
+    agent_name: str
+    question: str
 
 
 @router.post("/ask", response_model=AskResponse)
 async def ask_question(
     request: AskRequest,
     background: BackgroundTasks,
-    token: dict = Depends(require_scope("analysis:read")),
+    token: dict = _require_analysis_read,
 ):
     """
     Endpoint principal para preguntas en lenguaje natural.
@@ -52,7 +69,7 @@ async def ask_question(
     if not source_id:
         async with async_session_maker() as db:
             result = await db.execute(
-                select(Source.source_id).where(Source.enabled == True).limit(1)
+                select(Source.source_id).where(Source.enabled).limit(1)
             )
             source_id = result.scalar_one_or_none()
 
@@ -76,7 +93,7 @@ async def ask_question(
     # Ejecutar pipeline via LangGraph (con checkpoints)
     if request.agent and request.agent != "auto":
         # Ejecutar solo agente específico
-        final_state = await run_single_agent_graph(
+        params = SingleAgentGraphParams(
             run_id=run_id,
             source_id=source_id,
             source_config=source_config,
@@ -84,6 +101,7 @@ async def ask_question(
             agent_name=request.agent,
             question=request.question,
         )
+        final_state = await run_single_agent_graph(params)
     else:
         # Pipeline completo con todos los agentes
         final_state = await run_pipeline_graph(
@@ -118,26 +136,17 @@ async def ask_question(
     )
 
 
-async def run_single_agent_graph(
-    run_id: str,
-    source_id: str,
-    source_config: dict,
-    trace_id: str,
-    agent_name: str,
-    question: str,
-) -> dict:
+async def run_single_agent_graph(params: SingleAgentGraphParams) -> dict:
     """Ejecuta solo un agente específico via LangGraph"""
-    from data_platform.orchestrator.nodes import analysis_node
-    from data_platform.orchestrator.state import create_initial_state, update_state
-    from data_platform.agents.base import load_agents, get_agent, AgentInput
-
     await load_agents()
-    agent = get_agent(agent_name)
+    agent = get_agent(params.agent_name)
     if not agent:
-        raise HTTPException(400, f"Agente '{agent_name}' no disponible")
+        raise HTTPException(400, f"Agente '{params.agent_name}' no disponible")
 
     # Estado inicial
-    state = create_initial_state(run_id, source_id, source_config, trace_id)
+    state = create_initial_state(
+        params.run_id, params.source_id, params.source_config, params.trace_id
+    )
 
     # Necesitamos features - si no hay, disparar ingest+etl primero
     features = state.get("feature_records", [])
@@ -149,12 +158,12 @@ async def run_single_agent_graph(
         ]
 
     state["feature_records"] = features
-    state["source_id"] = source_id
+    state["source_id"] = params.source_id
 
     # Ejecutar solo el agente solicitado
     agent_input = AgentInput(
-        question=question,
-        context={"run_id": run_id, "source_id": source_id, "trace_id": trace_id},
+        question=params.question,
+        context={"run_id": params.run_id, "source_id": params.source_id, "trace_id": params.trace_id},
         features=features,
         params={}
     )
@@ -163,7 +172,7 @@ async def run_single_agent_graph(
 
     # Guardar resultado en estado
     state = update_state(state, current_stage="merge")
-    state[f"{agent_name}_result"] = output
+    state[f"{params.agent_name}_result"] = output
     state["tokens_used"] = output.tokens_used
     state["status"] = output.status
 
@@ -192,15 +201,17 @@ def _build_answer(state: dict, question: str) -> str:
 
     # Python result
     py = state.get("python_result")
-    if py and hasattr(py, 'result') and py.result:
-        parts.append(f"\n🐍 **Python**: Análisis computacional completado")
-    elif py and isinstance(py, dict) and py.get("result"):
-        parts.append(f"\n🐍 **Python**: Análisis computacional completado")
+    has_py_result = (
+        py and hasattr(py, 'result') and py.result
+        or py and isinstance(py, dict) and py.get("result")
+    )
+    if has_py_result:
+        parts.append("\n🐍 **Python**: Análisis computacional completado")
 
     # Viz
     viz = state.get("viz_result")
     if viz and (hasattr(viz, 'result') or isinstance(viz, dict)):
-        parts.append(f"\n📈 **Visualización**: Gráfico generado (Plotly spec)")
+        parts.append("\n📈 **Visualización**: Gráfico generado (Plotly spec)")
 
     if not any([insight, sql, py, viz]):
         parts.append("\n⚠️ No se generaron resultados. Verifica que hay datos en el source.")
@@ -214,7 +225,7 @@ def _build_answer(state: dict, question: str) -> str:
 @router.get("/runs/{run_id}/state")
 async def get_run_state(
     run_id: str,
-    token: dict = Depends(require_scope("analysis:read")),
+    token: dict = _require_analysis_read,
 ):
     """Obtiene estado actual de un pipeline run desde checkpoints"""
     state = await get_pipeline_state(run_id)
@@ -226,7 +237,7 @@ async def get_run_state(
 @router.post("/runs/{run_id}/resume")
 async def resume_run(
     run_id: str,
-    token: dict = Depends(require_scope("analysis:write")),
+    token: dict = _require_analysis_write,
 ):
     """Reanuda pipeline desde último checkpoint"""
     final_state = await resume_pipeline(run_id)

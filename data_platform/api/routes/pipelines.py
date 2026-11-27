@@ -1,25 +1,31 @@
 """Routes para Pipeline Runs - Versión simplificada"""
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
+import json
+from uuid import UUID, uuid4
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID, uuid4
-import json
 
 from data_platform.core.database import get_db
-from data_platform.core.security import verify_token, require_scope
 from data_platform.core.redis import stream_add
-from data_platform.models import PipelineRun, Source, AnalysisResult
+from data_platform.core.security import require_scope
+from data_platform.models import AnalysisResult, PipelineRun, Source
 from data_platform.schemas import PipelineRunRead, TriggerIngest
 
 router = APIRouter(prefix="/pipelines", tags=["pipelines"])
+
+_get_db_dep = Depends(get_db)
+_require_ingest_write = Depends(require_scope("ingest:write"))
+_require_ingest_read = Depends(require_scope("ingest:read"))
+_require_analysis_read = Depends(require_scope("analysis:read"))
 
 
 @router.post("/{source_id}/ingest", response_model=PipelineRunRead, status_code=status.HTTP_202_ACCEPTED)
 async def trigger_ingest(
     source_id: str,
     trigger: TriggerIngest,
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_scope("ingest:write"))
+    db: AsyncSession = _get_db_dep,
+    _: dict = _require_ingest_write,
 ):
     # Verificar source existe
     result = await db.execute(select(Source).where(Source.source_id == source_id))
@@ -53,8 +59,8 @@ async def trigger_ingest(
 @router.get("/{run_id}", response_model=PipelineRunRead)
 async def get_pipeline(
     run_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_scope("ingest:read"))
+    db: AsyncSession = _get_db_dep,
+    _: dict = _require_ingest_read,
 ):
     run = await db.get(PipelineRun, run_id)
     if not run:
@@ -65,8 +71,8 @@ async def get_pipeline(
 @router.get("/{run_id}/results")
 async def get_pipeline_results(
     run_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_scope("analysis:read"))
+    db: AsyncSession = _get_db_dep,
+    _: dict = _require_analysis_read,
 ):
     run = await db.get(PipelineRun, run_id)
     if not run:
