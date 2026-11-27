@@ -1,12 +1,13 @@
 """Worker SQL Agent - Consume analysis:sql y ejecuta SQL Agent"""
 import asyncio
 import json
+from contextlib import suppress
+
+from data_platform.agents.base import AgentInput, get_agent, load_agents
 from data_platform.core.database import init_db
-from data_platform.core.redis import get_redis, stream_consume_group, stream_ack
-from data_platform.agents.base import load_agents, get_agent
-from data_platform.orchestrator.state import PipelineState
-from data_platform.agents.base import AgentInput
 from data_platform.core.observability import get_logger
+from data_platform.core.redis import get_redis, stream_ack, stream_consume_group
+from data_platform.orchestrator.state import PipelineState
 
 logger = get_logger(__name__)
 
@@ -20,10 +21,8 @@ async def main():
     await load_agents()
 
     r = await get_redis()
-    try:
+    with suppress(Exception):
         await r.xgroup_create(STREAM, GROUP, id="0", mkstream=True)
-    except Exception:
-        pass
 
     logger.info("sql_agent_worker_started", group=GROUP)
 
@@ -31,7 +30,7 @@ async def main():
         try:
             messages = await stream_consume_group(STREAM, GROUP, CONSUMER, count=3)
 
-            for stream, msgs in messages:
+            for _stream, msgs in messages:
                 for msg_id, data in msgs:
                     try:
                         state_data = json.loads(data.get("state", "{}"))

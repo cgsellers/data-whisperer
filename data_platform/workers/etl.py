@@ -1,11 +1,13 @@
 """Worker ETL - Consume etl:pending y ejecuta nodo etl"""
 import asyncio
+import contextlib
 import json
+
 from data_platform.core.database import init_db
-from data_platform.core.redis import get_redis, stream_consume_group, stream_ack
+from data_platform.core.observability import get_logger
+from data_platform.core.redis import get_redis, stream_ack, stream_consume_group
 from data_platform.orchestrator.nodes import etl_node
 from data_platform.orchestrator.state import PipelineState
-from data_platform.core.observability import get_logger
 
 logger = get_logger(__name__)
 
@@ -18,10 +20,8 @@ async def main():
     await init_db()
 
     r = await get_redis()
-    try:
+    with contextlib.suppress(Exception):
         await r.xgroup_create(STREAM, GROUP, id="0", mkstream=True)
-    except Exception:
-        pass
 
     logger.info("etl_worker_started", group=GROUP)
 
@@ -29,7 +29,7 @@ async def main():
         try:
             messages = await stream_consume_group(STREAM, GROUP, CONSUMER, count=5)
 
-            for stream, msgs in messages:
+            for _stream, msgs in messages:
                 for msg_id, data in msgs:
                     try:
                         # Reconstruir estado desde mensaje

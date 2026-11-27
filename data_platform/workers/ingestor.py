@@ -1,12 +1,14 @@
 """Worker Ingestor - Consume ingestion:raw y ejecuta nodo ingest"""
 import asyncio
+import contextlib
 import json
-from data_platform.core.database import init_db
-from data_platform.core.redis import get_redis, stream_consume_group, stream_ack, close_redis
+
 from data_platform.connectors.base import load_connectors
-from data_platform.orchestrator.nodes import ingest_node
-from data_platform.orchestrator.state import create_initial_state, update_state
+from data_platform.core.database import init_db
 from data_platform.core.observability import get_logger
+from data_platform.core.redis import get_redis, stream_ack, stream_consume_group
+from data_platform.orchestrator.nodes import ingest_node
+from data_platform.orchestrator.state import create_initial_state
 
 logger = get_logger(__name__)
 
@@ -20,10 +22,8 @@ async def main():
     await load_connectors()
 
     r = await get_redis()
-    try:
+    with contextlib.suppress(Exception):
         await r.xgroup_create(STREAM, GROUP, id="0", mkstream=True)
-    except Exception:
-        pass
 
     logger.info("ingestor_started", group=GROUP)
 
@@ -31,7 +31,7 @@ async def main():
         try:
             messages = await stream_consume_group(STREAM, GROUP, CONSUMER, count=5)
 
-            for stream, msgs in messages:
+            for _stream, msgs in messages:
                 for msg_id, data in msgs:
                     try:
                         run_id = data.get("run_id")
