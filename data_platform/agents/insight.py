@@ -1,6 +1,7 @@
 """Insight Agent - Detección de anomalías + narrativa en lenguaje natural"""
 import json
-from data_platform.agents.base import BaseLLMAgent, AgentInput, register_agent
+
+from data_platform.agents.base import AgentInput, BaseLLMAgent, register_agent
 from data_platform.core.observability import get_logger
 
 logger = get_logger(__name__)

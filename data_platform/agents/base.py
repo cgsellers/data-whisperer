@@ -2,9 +2,11 @@
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from importlib.metadata import entry_points
 from typing import Any
 from uuid import UUID
-from data_platform.core.llm import llm_complete_with_cache, LLMResponse
+
+from data_platform.core.llm import LLMCompleteParams, LLMResponse, llm_complete_with_cache
 from data_platform.core.observability import get_logger
 
 logger = get_logger(__name__)
@@ -53,10 +55,12 @@ class BaseLLMAgent(ABC):
 
             # Llamar LLM con cache
             response: LLMResponse = await llm_complete_with_cache(
-                messages=messages,
-                tools=self.tools,
-                tool_choice="auto" if self.tools else None,
-                temperature=0.1,
+                LLMCompleteParams(
+                    messages=messages,
+                    tools=self.tools,
+                    tool_choice="auto" if self.tools else None,
+                    temperature=0.1,
+                )
             )
 
             # Ejecutar tool calls si los hay
@@ -134,7 +138,6 @@ async def load_agents():
     """Carga agentes built-in + entry_points + fallback manual"""
     # Built-in agents (se registran al importar sus módulos)
     try:
-        from importlib.metadata import entry_points
         for ep in entry_points(group="data_platform.agents"):
             agent_class = ep.load()
             register_agent(agent_class())
@@ -144,13 +147,15 @@ async def load_agents():
     # Fallback: registrar agentes manualmente si no se cargaron por entry_points
     if not _agents:
         try:
-            from data_platform.agents.sql import SQLAgent
-            from data_platform.agents.python import PythonAgent
-            from data_platform.agents.viz import VizAgent
-            from data_platform.agents.insight import InsightAgent
+            from data_platform.agents.insight import InsightAgent  # noqa: PLC0415
+            from data_platform.agents.python import PythonAgent  # noqa: PLC0415
+            from data_platform.agents.sql import SQLAgent  # noqa: PLC0415
+            from data_platform.agents.viz import VizAgent  # noqa: PLC0415
             register_agent(SQLAgent())
             register_agent(PythonAgent())
             register_agent(VizAgent())
             register_agent(InsightAgent())
         except Exception:
             pass
+
+

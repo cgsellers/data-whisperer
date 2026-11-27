@@ -1,9 +1,10 @@
 """SQL Agent - Text-to-SQL con validación y ejecución segura"""
 import json
-from typing import Any
+
 from sqlalchemy import text
+
+from data_platform.agents.base import AgentInput, BaseLLMAgent, register_agent
 from data_platform.core.database import async_session_maker
-from data_platform.agents.base import BaseLLMAgent, AgentInput, register_agent
 from data_platform.core.observability import get_logger
 
 logger = get_logger(__name__)
